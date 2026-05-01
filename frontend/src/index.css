@@ -1,0 +1,171 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(17, 24, 39, 0.5);
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(139, 92, 246, 0.5);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(139, 92, 246, 0.7);
+}
+
+/* Glassmorphism utility classes */
+.glass-card {
+  @apply bg-glass backdrop-blur-xl border border-glass-border shadow-card rounded-2xl;
+}
+
+.glass-card-hover {
+  @apply glass-card transition-all duration-300 hover:shadow-card-hover hover:scale-[1.02];
+}
+
+/* Gradient backgrounds */
+.gradient-primary {
+  @apply bg-gradient-to-r from-primary to-secondary;
+}
+
+.gradient-bg {
+  @apply bg-gradient-to-br from-background via-background-light to-background;
+}
+
+/* Neon glow effects */
+.neon-glow {
+  box-shadow: 0 0 20px rgba(139, 92, 246, 0.3);
+}
+
+.neon-glow-hover:hover {
+  box-shadow: 0 0 30px rgba(139, 92, 246, 0.5);
+}
+
+/* Smooth transitions */
+.smooth-transition {
+  @apply transition-all duration-300 ease-in-out;
+}
+
+/* Input focus styles */
+.input-focus {
+  @apply focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent;
+}
+
+/* Button styles */
+.btn-primary {
+  @apply gradient-primary text-white font-semibold px-6 py-3 rounded-xl 
+         hover:opacity-90 hover:shadow-glow transition-all duration-300 
+         disabled:opacity-50 disabled:cursor-not-allowed;
+}
+
+.btn-secondary {
+  @apply bg-background-lighter text-text-primary font-semibold px-6 py-3 rounded-xl
+         border border-glass-border hover:border-primary transition-all duration-300;
+}
+
+.btn-danger {
+  @apply bg-danger text-white font-semibold px-6 py-3 rounded-xl
+         hover:bg-danger-dark transition-all duration-300;
+}
+
+/* Skeleton loading animation */
+.skeleton {
+  @apply bg-gradient-to-r from-background-light via-background-lighter to-background-light 
+         animate-shimmer bg-[length:1000px_100%];
+}
+
+/* Badge styles */
+.badge {
+  @apply inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold;
+}
+
+.badge-success {
+  @apply bg-success/20 text-success-light border border-success/30;
+}
+
+.badge-warning {
+  @apply bg-warning/20 text-warning-light border border-warning/30;
+}
+
+.badge-danger {
+  @apply bg-danger/20 text-danger-light border border-danger/30;
+}
+
+.badge-info {
+  @apply bg-secondary/20 text-secondary-light border border-secondary/30;
+}
+
+/* Priority indicators */
+.priority-high {
+  @apply text-danger border-l-2 border-danger pl-2;
+}
+
+.priority-medium {
+  @apply text-warning border-l-2 border-warning pl-2;
+}
+
+.priority-low {
+  @apply text-secondary border-l-2 border-secondary pl-2;
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.fade-in {
+  animation: fadeIn 0.4s ease-out;
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateX(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.slide-in {
+  animation: slideIn 0.3s ease-out;
+}
+
+/* Custom scrollbar for specific containers */
+.custom-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(139, 92, 246, 0.5) rgba(17, 24, 39, 0.5);
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: rgba(17, 24, 39, 0.5);
+  border-radius: 3px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(139, 92, 246, 0.5);
+  border-radius: 3px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(139, 92, 246, 0.7);
+}
