@@ -19,14 +19,11 @@ const generateToken = (userId) => {
  */
 const useCrossSiteAuthCookie = () => {
   if (process.env.AUTH_COOKIE_SAMESITE === 'lax') return false;
-  return (
-    process.env.NODE_ENV === 'production' ||
-    Boolean(
-      process.env.RAILWAY_ENVIRONMENT ||
-        process.env.RAILWAY_PROJECT_ID ||
-        process.env.RAILWAY_SERVICE_NAME
-    )
-  );
+  // Local dev on http://localhost: use Lax + non-Secure. Anything else (Railway,
+  // missing NODE_ENV, staging) needs None + Secure so credentialed XHR works
+  // across *.up.railway.app subdomains.
+  if (process.env.NODE_ENV === 'development') return false;
+  return true;
 };
 
 const authCookieOptions = () => {

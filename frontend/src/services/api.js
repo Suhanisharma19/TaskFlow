@@ -1,5 +1,16 @@
 import axios from 'axios';
 
+/** Session JWT for cross-origin API (Railway) when third-party cookies are blocked. */
+export const AUTH_TOKEN_KEY = 'taskflow_jwt';
+
+export const clearStoredAuthToken = () => {
+  try {
+    sessionStorage.removeItem(AUTH_TOKEN_KEY);
+  } catch {
+    /* ignore */
+  }
+};
+
 const getApiBaseUrl = () => {
   const rawUrl = import.meta.env.VITE_API_URL;
 
@@ -37,9 +48,16 @@ const api = axios.create({
 // Request interceptor
 api.interceptors.request.use(
   (config) => {
-    // Auth now relies on httpOnly cookie (withCredentials: true).
-    // Avoid sending legacy localStorage token headers that may be stale.
-    delete config.headers.Authorization;
+    try {
+      const token = sessionStorage.getItem(AUTH_TOKEN_KEY);
+      if (token) {
+        config.headers.Authorization = `Bearer ${token}`;
+      } else {
+        delete config.headers.Authorization;
+      }
+    } catch {
+      delete config.headers.Authorization;
+    }
     return config;
   },
   (error) => {
@@ -54,17 +72,18 @@ api.interceptors.response.use(
     // Handle 401 Unauthorized - redirect to login
     if (error.response && error.response.status === 401) {
       const reqUrl = error.config?.url || '';
-      // Session check and login failures must not force a full-page redirect;
-      // a stale /auth/me after login was sending users back to "/" or /login.
-      const isAuthBootstrap =
-        reqUrl.includes('/auth/me') ||
-        reqUrl.includes('/auth/login') ||
-        reqUrl.includes('/auth/signup');
+      // Wrong password must not wipe an existing session token.
+      if (reqUrl.includes('/auth/login') || reqUrl.includes('/auth/signup')) {
+        return Promise.reject(error);
+      }
+
+      const isSessionCheck = reqUrl.includes('/auth/me');
 
       localStorage.removeItem('token');
       localStorage.removeItem('user');
+      clearStoredAuthToken();
 
-      if (!isAuthBootstrap) {
+      if (!isSessionCheck) {
         window.location.href = '/login';
       }
     }
