@@ -1,131 +1,84 @@
-const express = require('express');
-const cors = require('cors');
-const helmet = require('helmet');
-const rateLimit = require('express-rate-limit');
-const cookieParser = require('cookie-parser');
+import { BrowserRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom';
+import { AuthProvider, useAuth } from './context/AuthContext';
+import ProtectedRoute from './components/ProtectedRoute';
+import Sidebar from './components/layout/Sidebar';
+import Login from './pages/Login';
+import Signup from './pages/Signup';
+import Dashboard from './pages/Dashboard';
+import Projects from './pages/Projects';
+import ProjectDetail from './pages/ProjectDetail';
+import Tasks from './pages/Tasks';
+import Team from './pages/Team';
 
-// Routes
-const authRoutes = require('./routes/authRoutes');
-const projectRoutes = require('./routes/projectRoutes');
-const taskRoutes = require('./routes/taskRoutes');
-const teamRoutes = require('./routes/teamRoutes');
-const dashboardRoutes = require('./routes/dashboardRoutes');
-const userRoutes = require('./routes/userRoutes');
+function RootRedirect() {
+  const { user, loading, isAuthenticated } = useAuth();
 
-const app = express();
-
-/* ---------------- SECURITY ---------------- */
-app.use(helmet());
-
-/* ---------------- BODY PARSER ---------------- */
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true }));
-app.use(cookieParser());
-
-/* ---------------- CORS ---------------- */
-const allowedOrigins = [
-  'http://localhost:5173',
-  'http://localhost:5174',
-  'http://localhost:5175',
-  ...(process.env.CORS_ORIGIN ? process.env.CORS_ORIGIN.split(',') : [])
-];
-
-app.use(cors({
-  origin: (origin, callback) => {
-    // allow Postman / server-to-server
-    if (!origin) return callback(null, true);
-
-    if (allowedOrigins.includes(origin)) {
-      return callback(null, true);
-    }
-
-    console.log("❌ CORS blocked:", origin);
-
-    // IMPORTANT: do NOT break request in production
-    return callback(null, true);
-  },
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
-}));
-
-// Preflight support (VERY IMPORTANT for Railway / production)
-app.options('*', cors());
-
-/* ---------------- RATE LIMIT ---------------- */
-const isDev = process.env.NODE_ENV !== 'production';
-
-const authLimiter = rateLimit({
-  windowMs: Number(process.env.RATE_LIMIT_WINDOW || 15) * 60 * 1000,
-  max: isDev ? 1000 : Number(process.env.RATE_LIMIT_MAX || 100),
-  skip: (req) =>
-    req.path.includes('/me') || req.path.includes('/logout'),
-  message: {
-    success: false,
-    message: 'Too many requests, please try again later'
-  }
-});
-
-app.use('/api/auth', authLimiter);
-
-/* ---------------- ROUTES ---------------- */
-app.use('/api/auth', authRoutes);
-app.use('/api/projects', projectRoutes);
-app.use('/api/tasks', taskRoutes);
-app.use('/api/team', teamRoutes);
-app.use('/api/dashboard', dashboardRoutes);
-app.use('/api/users', userRoutes);
-
-/* ---------------- HEALTH CHECK ---------------- */
-app.get('/api/health', (req, res) => {
-  res.status(200).json({
-    success: true,
-    message: 'TaskFlow API is running',
-    timestamp: new Date().toISOString()
-  });
-});
-
-/* ---------------- 404 ---------------- */
-app.use((req, res) => {
-  res.status(404).json({
-    success: false,
-    message: `Route ${req.originalUrl} not found`
-  });
-});
-
-/* ---------------- GLOBAL ERROR HANDLER ---------------- */
-app.use((err, req, res, next) => {
-  console.error('🔥 Error:', err);
-
-  if (err.name === 'ValidationError') {
-    return res.status(400).json({
-      success: false,
-      message: 'Validation Error',
-      errors: Object.values(err.errors).map(e => ({
-        field: e.path,
-        message: e.message
-      }))
-    });
+  if (loading) {
+    return (
+      <div className="h-screen flex items-center justify-center gradient-bg">
+        <div className="w-10 h-10 border-4 border-purple-500 border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
   }
 
-  if (err.code === 11000) {
-    return res.status(400).json({
-      success: false,
-      message: 'Duplicate entry'
-    });
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace />;
   }
 
-  if (err.name === 'UnauthorizedError') {
-    return res.status(401).json({
-      success: false,
-      message: 'Unauthorized access'
-    });
-  }
+  const landing = user?.role === 'admin' ? '/dashboard' : '/tasks';
+  return <Navigate to={landing} replace />;
+}
 
-  res.status(err.status || 500).json({
-    success: false,
-    message: err.message || 'Internal server error'
-  });
-});
+function AppShell() {
+  return (
+    <div className="min-h-screen gradient-bg">
+      <Sidebar />
+      <main className="lg:pl-[260px] pt-20 lg:pt-6 px-4 lg:px-8 pb-10">
+        <Outlet />
+      </main>
+    </div>
+  );
+}
 
-module.exports = app;
+function AppRoutes() {
+  return (
+    <Routes>
+      <Route path="/login" element={<Login />} />
+      <Route path="/signup" element={<Signup />} />
+      <Route path="/" element={<RootRedirect />} />
+
+      <Route
+        element={
+          <ProtectedRoute>
+            <AppShell />
+          </ProtectedRoute>
+        }
+      >
+        <Route path="dashboard" element={<Dashboard />} />
+        <Route path="projects" element={<Projects />} />
+        <Route path="projects/:id" element={<ProjectDetail />} />
+        <Route path="tasks" element={<Tasks />} />
+        <Route
+          path="team"
+          element={
+            <ProtectedRoute adminOnly>
+              <Team />
+            </ProtectedRoute>
+          }
+        />
+      </Route>
+
+      <Route path="*" element={<Navigate to="/" replace />} />
+    </Routes>
+  );
+}
+
+export default function App() {
+  return (
+    <BrowserRouter>
+      <AuthProvider>
+        <AppRoutes />
+      </AuthProvider>
+    </BrowserRouter>
+  );
+}

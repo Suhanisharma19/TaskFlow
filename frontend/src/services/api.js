@@ -53,9 +53,20 @@ api.interceptors.response.use(
   (error) => {
     // Handle 401 Unauthorized - redirect to login
     if (error.response && error.response.status === 401) {
+      const reqUrl = error.config?.url || '';
+      // Session check and login failures must not force a full-page redirect;
+      // a stale /auth/me after login was sending users back to "/" or /login.
+      const isAuthBootstrap =
+        reqUrl.includes('/auth/me') ||
+        reqUrl.includes('/auth/login') ||
+        reqUrl.includes('/auth/signup');
+
       localStorage.removeItem('token');
       localStorage.removeItem('user');
-      window.location.href = '/login';
+
+      if (!isAuthBootstrap) {
+        window.location.href = '/login';
+      }
     }
     
     // Handle 403 Forbidden

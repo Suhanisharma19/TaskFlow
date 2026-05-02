@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect } from 'react';
+import { createContext, useContext, useState, useEffect, useRef } from 'react';
 import api from '../services/api';
 
 const AuthContext = createContext(null);
@@ -14,27 +14,41 @@ export const useAuth = () => {
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const bootstrapGeneration = useRef(0);
 
-  // Bootstrap auth
+  // Bootstrap auth (ignore stale /auth/me after login or StrictMode remount)
   useEffect(() => {
+    const generation = ++bootstrapGeneration.current;
+
     const initAuth = async () => {
       try {
         const res = await api.get('/auth/me');
+        if (generation !== bootstrapGeneration.current) return;
         if (res.data?.user) {
           setUser(res.data.user);
+        } else {
+          setUser(null);
         }
-      } catch (err) {
+      } catch {
+        if (generation !== bootstrapGeneration.current) return;
         setUser(null);
       } finally {
-        setLoading(false);
+        if (generation === bootstrapGeneration.current) {
+          setLoading(false);
+        }
       }
     };
 
     initAuth();
+
+    return () => {
+      bootstrapGeneration.current += 1;
+    };
   }, []);
 
   // LOGIN
   const login = async (email, password) => {
+    bootstrapGeneration.current += 1;
     try {
       const res = await api.post('/auth/login', { email, password });
 
@@ -52,16 +66,21 @@ export const AuthProvider = ({ children }) => {
         success: false,
         message: err.response?.data?.message || 'Login failed'
       };
+    } finally {
+      setLoading(false);
     }
   };
 
   // SIGNUP
   const signup = async (data) => {
+    bootstrapGeneration.current += 1;
     try {
       const res = await api.post('/auth/signup', data);
 
       const userData = res.data?.user;
-      setUser(userData);
+      if (userData) {
+        setUser(userData);
+      }
 
       return { success: true, user: userData };
     } catch (err) {
@@ -69,6 +88,8 @@ export const AuthProvider = ({ children }) => {
         success: false,
         message: err.response?.data?.message || 'Signup failed'
       };
+    } finally {
+      setLoading(false);
     }
   };
 
