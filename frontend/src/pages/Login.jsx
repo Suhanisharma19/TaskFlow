@@ -6,22 +6,17 @@ import {
   Lock,
   Eye,
   EyeOff,
-  CheckCircle2,
   Loader2,
-  ArrowRight,
-  TrendingUp
+  ArrowRight
 } from 'lucide-react';
-import { FaGithub } from 'react-icons/fa';
 import { useAuth } from '../context/AuthContext';
 
 const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [rememberMe, setRememberMe] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const [focusedInput, setFocusedInput] = useState(null);
 
   const { login } = useAuth();
   const navigate = useNavigate();
@@ -50,79 +45,110 @@ const Login = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#050811] flex items-center justify-center text-white">
-      <div className="w-full max-w-md p-6 bg-white/5 rounded-2xl backdrop-blur-xl border border-white/10">
-
-        <h2 className="text-3xl font-bold mb-6 text-center">
-          Login
-        </h2>
-
-        {error && (
-          <div className="mb-4 text-red-400 text-sm">
-            {error}
-          </div>
-        )}
-
-        <form onSubmit={handleSubmit} className="space-y-4">
-
-          {/* Email */}
-          <div>
-            <label className="text-sm">Email</label>
-            <div className="flex items-center border border-white/20 rounded-lg px-3">
-              <Mail className="w-4 h-4" />
-              <input
-                type="email"
-                className="w-full bg-transparent p-2 outline-none"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-              />
-            </div>
-          </div>
-
-          {/* Password */}
-          <div>
-            <label className="text-sm">Password</label>
-            <div className="flex items-center border border-white/20 rounded-lg px-3">
-              <Lock className="w-4 h-4" />
-              <input
-                type={showPassword ? 'text' : 'password'}
-                className="w-full bg-transparent p-2 outline-none"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-              >
-                {showPassword ? <EyeOff /> : <Eye />}
-              </button>
-            </div>
-          </div>
-
-          {/* Submit */}
-          <button
-            disabled={loading}
-            className="w-full bg-purple-600 py-2 rounded-lg flex justify-center items-center gap-2"
-          >
-            {loading ? (
-              <>
-                <Loader2 className="animate-spin" />
-                Logging in...
-              </>
-            ) : (
-              <>
-                Login <ArrowRight />
-              </>
-            )}
-          </button>
-        </form>
-
-        <p className="text-center mt-4 text-sm">
-          Don’t have an account? <Link to="/signup">Signup</Link>
-        </p>
+    <div className="min-h-screen gradient-bg flex items-center justify-center p-4">
+      <div className="pointer-events-none absolute inset-0 overflow-hidden">
+        <div className="absolute -top-24 -left-32 h-[420px] w-[420px] rounded-full bg-primary/20 blur-3xl animate-pulse-slow" />
+        <div className="absolute -bottom-24 -right-32 h-[460px] w-[460px] rounded-full bg-secondary/15 blur-3xl animate-pulse-slow" />
       </div>
+
+      <motion.div
+        initial={{ opacity: 0, y: 14 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.45 }}
+        className="relative w-full max-w-md"
+      >
+        <div className="glass-card p-8">
+          <div className="text-center mb-8">
+            <motion.div
+              className="w-16 h-16 mx-auto rounded-2xl gradient-primary flex items-center justify-center mb-4 shadow-glow"
+              whileHover={{ scale: 1.03 }}
+            >
+              <span className="text-white font-bold text-2xl">T</span>
+            </motion.div>
+            <h2 className="text-3xl font-bold text-text-primary">Welcome back</h2>
+            <p className="text-text-secondary mt-2">Sign in to continue to TaskFlow.</p>
+          </div>
+
+          <AnimatePresence>
+            {error && (
+              <motion.div
+                initial={{ opacity: 0, y: -8 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -8 }}
+                className="mb-5 p-3 rounded-xl bg-danger/10 border border-danger/20 text-danger-light text-sm"
+              >
+                {error}
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          <form onSubmit={handleSubmit} className="space-y-5">
+            <div>
+              <label className="text-sm text-text-secondary">Email</label>
+              <div className="mt-2 flex items-center gap-3 px-4 py-3 bg-background-light border border-glass-border rounded-2xl">
+                <Mail className="w-4 h-4 text-text-muted" />
+                <input
+                  type="email"
+                  className="w-full bg-transparent outline-none text-text-primary placeholder:text-text-muted"
+                  placeholder="you@company.com"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="text-sm text-text-secondary">Password</label>
+              <div className="mt-2 flex items-center gap-3 px-4 py-3 bg-background-light border border-glass-border rounded-2xl">
+                <Lock className="w-4 h-4 text-text-muted" />
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  className="w-full bg-transparent outline-none text-text-primary placeholder:text-text-muted"
+                  placeholder="••••••••"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword((s) => !s)}
+                  className="text-text-muted hover:text-text-primary transition-colors"
+                  aria-label={showPassword ? 'Hide password' : 'Show password'}
+                >
+                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+            </div>
+
+            <motion.button
+              type="submit"
+              disabled={loading}
+              whileHover={{ scale: loading ? 1 : 1.01 }}
+              whileTap={{ scale: loading ? 1 : 0.99 }}
+              className="w-full btn-primary flex items-center justify-center gap-2"
+            >
+              {loading ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Signing in...
+                </>
+              ) : (
+                <>
+                  Sign in <ArrowRight className="w-4 h-4" />
+                </>
+              )}
+            </motion.button>
+          </form>
+
+          <p className="text-center mt-6 text-sm text-text-secondary">
+            Don’t have an account?{' '}
+            <Link to="/signup" className="text-primary hover:text-primary-light transition-colors">
+              Create one
+            </Link>
+          </p>
+        </div>
+      </motion.div>
     </div>
   );
 };
