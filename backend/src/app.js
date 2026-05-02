@@ -35,24 +35,35 @@ const buildAllowedOrigins = () => {
   return set;
 };
 
+/** True when this process is running on Railway (NODE_ENV is often unset). */
+const isRunningOnRailway = () =>
+  Boolean(
+    process.env.RAILWAY_ENVIRONMENT ||
+      process.env.RAILWAY_PROJECT_ID ||
+      process.env.RAILWAY_SERVICE_NAME
+  );
+
+const isRailwayAppOrigin = (origin) => {
+  try {
+    const { hostname, protocol } = new URL(origin);
+    return protocol === 'https:' && hostname.endsWith('.up.railway.app');
+  } catch {
+    return false;
+  }
+};
+
 const isOriginAllowed = (origin) => {
   if (!origin) return true;
   const allowed = buildAllowedOrigins();
   if (allowed.has(origin)) return true;
 
-  // Railway frontend + API are different subdomains (cross-origin). Allow
-  // HTTPS Railway app URLs in production unless explicitly disabled.
   if (process.env.CORS_STRICT === 'true') return false;
-  if (process.env.NODE_ENV === 'production') {
-    try {
-      const { hostname, protocol } = new URL(origin);
-      if (protocol === 'https:' && hostname.endsWith('.up.railway.app')) {
-        return true;
-      }
-    } catch {
-      return false;
-    }
-  }
+
+  // Railway: frontend and API are different *.up.railway.app hosts. Do not
+  // rely only on NODE_ENV—Railway often leaves it unset.
+  const allowRailwayHosts =
+    process.env.NODE_ENV === 'production' || isRunningOnRailway();
+  if (allowRailwayHosts && isRailwayAppOrigin(origin)) return true;
 
   return false;
 };
@@ -70,7 +81,13 @@ const corsOptions = {
 };
 
 /* ---------------- SECURITY ---------------- */
-app.use(helmet());
+// Default Helmet sets Cross-Origin-Resource-Policy: same-origin, which breaks
+// browser API calls from your Railway frontend (different subdomain).
+app.use(
+  helmet({
+    crossOriginResourcePolicy: { policy: 'cross-origin' },
+  })
+);
 
 /* ---------------- BODY PARSER ---------------- */
 app.use(express.json({ limit: '10mb' }));
