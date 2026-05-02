@@ -12,14 +12,35 @@ const generateToken = (userId) => {
   });
 };
 
-const setAuthCookie = (res, token) => {
-  const isProduction = process.env.NODE_ENV === 'production';
-  res.cookie('token', token, {
+/**
+ * Frontend (e.g. *.up.railway.app) and API are different sites → cross-origin
+ * credentialed requests need SameSite=None + Secure. Railway often omits NODE_ENV;
+ * still set RAILWAY_* envs, so detect those too.
+ */
+const useCrossSiteAuthCookie = () => {
+  if (process.env.AUTH_COOKIE_SAMESITE === 'lax') return false;
+  return (
+    process.env.NODE_ENV === 'production' ||
+    Boolean(
+      process.env.RAILWAY_ENVIRONMENT ||
+        process.env.RAILWAY_PROJECT_ID ||
+        process.env.RAILWAY_SERVICE_NAME
+    )
+  );
+};
+
+const authCookieOptions = () => {
+  const crossSite = useCrossSiteAuthCookie();
+  return {
     httpOnly: true,
-    secure: isProduction,
-    sameSite: isProduction ? 'none' : 'lax',
+    secure: crossSite,
+    sameSite: crossSite ? 'none' : 'lax',
     maxAge: 7 * 24 * 60 * 60 * 1000
-  });
+  };
+};
+
+const setAuthCookie = (res, token) => {
+  res.cookie('token', token, authCookieOptions());
 };
 
 /**
@@ -162,11 +183,11 @@ exports.login = async (req, res) => {
 };
 
 exports.logout = async (req, res) => {
-  const isProduction = process.env.NODE_ENV === 'production';
+  const { httpOnly, secure, sameSite } = authCookieOptions();
   res.clearCookie('token', {
-    httpOnly: true,
-    secure: isProduction,
-    sameSite: isProduction ? 'none' : 'lax'
+    httpOnly,
+    secure,
+    sameSite
   });
 
   res.status(200).json({

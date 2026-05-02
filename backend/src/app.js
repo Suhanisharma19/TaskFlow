@@ -13,6 +13,9 @@ const userRoutes = require('./routes/userRoutes');
 
 const app = express();
 
+// Behind Railway / reverse proxy (correct req.ip, secure cookies behavior)
+app.set('trust proxy', 1);
+
 const buildAllowedOrigins = () => {
   const set = new Set([
     'http://localhost:5173',
