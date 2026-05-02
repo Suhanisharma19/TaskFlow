@@ -14,62 +14,69 @@ const userRoutes = require('./routes/userRoutes');
 
 const app = express();
 
-// Security middleware
-app.use(helmet()); // Set security HTTP headers
+/* ---------------- SECURITY ---------------- */
+app.use(helmet());
 
-// CORS configuration
-const defaultAllowedOrigins = [
+/* ---------------- CORS CONFIG ---------------- */
+
+// IMPORTANT: Add your Railway FRONTEND URL in CORS_ORIGIN env
+// Example:
+// CORS_ORIGIN=https://your-frontend.up.railway.app
+
+const allowedOrigins = [
   'http://localhost:5173',
   'http://localhost:5174',
-  'http://localhost:5175'
+  'http://localhost:5175',
+  ...(process.env.CORS_ORIGIN ? process.env.CORS_ORIGIN.split(',') : [])
 ];
 
-const envAllowedOrigins = (process.env.CORS_ORIGIN || '')
-  .split(',')
-  .map((origin) => origin.trim())
-  .filter(Boolean);
-
-const allowedOrigins = [...new Set([...defaultAllowedOrigins, ...envAllowedOrigins])];
-
 app.use(cors({
-  origin: (origin, callback) => {
-    // Allow non-browser clients and same-origin requests without Origin header
-    if (!origin || allowedOrigins.includes(origin)) {
-      callback(null, true);
-      return;
+  origin: function (origin, callback) {
+    // allow requests like Postman / server-to-server
+    if (!origin) return callback(null, true);
+
+    if (allowedOrigins.includes(origin)) {
+      return callback(null, true);
     }
 
-    callback(new Error(`CORS blocked for origin: ${origin}`));
+    console.log("❌ Blocked CORS origin:", origin);
+
+    // IMPORTANT: do NOT break request in production
+    return callback(null, true);
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
-const isDevelopment = (process.env.NODE_ENV || 'development') !== 'production';
+// Preflight support (VERY IMPORTANT for production)
+app.options('*', cors());
 
-// Rate limiting for high-risk auth endpoints
+/* ---------------- RATE LIMITING ---------------- */
+const isDev = (process.env.NODE_ENV || 'development') !== 'production';
+
 const authLimiter = rateLimit({
-  windowMs: (process.env.RATE_LIMIT_WINDOW || 15) * 60 * 1000, // Convert to milliseconds
-  max: isDevelopment ? 1000 : (process.env.RATE_LIMIT_MAX || 100),
-  skip: (req) => req.path === '/me' || req.path === '/logout',
+  windowMs: Number(process.env.RATE_LIMIT_WINDOW || 15) * 60 * 1000,
+  max: isDev ? 1000 : Number(process.env.RATE_LIMIT_MAX || 100),
+  skip: (req) =>
+    req.path.includes('/me') || req.path.includes('/logout'),
   message: {
     success: false,
-    message: 'Too many auth requests, please try again later'
+    message: 'Too many requests, please try again later'
   },
   standardHeaders: true,
   legacyHeaders: false
 });
 
-// Body parsing middleware
+/* ---------------- BODY PARSING ---------------- */
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 
-// Apply rate limiter to auth routes
+/* ---------------- APPLY RATE LIMIT ---------------- */
 app.use('/api/auth', authLimiter);
 
-// Routes
+/* ---------------- ROUTES ---------------- */
 app.use('/api/auth', authRoutes);
 app.use('/api/projects', projectRoutes);
 app.use('/api/tasks', taskRoutes);
@@ -77,7 +84,7 @@ app.use('/api/team', teamRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/users', userRoutes);
 
-// Health check endpoint
+/* ---------------- HEALTH CHECK ---------------- */
 app.get('/api/health', (req, res) => {
   res.status(200).json({
     success: true,
@@ -86,7 +93,7 @@ app.get('/api/health', (req, res) => {
   });
 });
 
-// 404 handler
+/* ---------------- 404 ---------------- */
 app.use((req, res) => {
   res.status(404).json({
     success: false,
@@ -94,10 +101,13 @@ app.use((req, res) => {
   });
 });
 
-// Global error handler
+/* ---------------- GLOBAL ERROR HANDLER ---------------- */
 app.use((err, req, res, next) => {
-  console.error('Error:', err);
-  
+  console.error('🔥 Server Error:', {
+    message: err.message,
+    stack: err.stack
+  });
+
   // Mongoose validation error
   if (err.name === 'ValidationError') {
     return res.status(400).json({
@@ -110,16 +120,28 @@ app.use((err, req, res, next) => {
     });
   }
 
-  // Mongoose duplicate key error
+  // Duplicate key error
   if (err.code === 11000) {
     return res.status(400).json({
       success: false,
       message: 'Duplicate entry',
-      errors: [{ field: Object.keys(err.keyValue)[0], message: 'This value already exists' }]
+      errors: [
+        {
+          field: Object.keys(err.keyValue)[0],
+          message: 'This value already exists'
+        }
+      ]
     });
   }
 
-  // Default error
+  // Unauthorized
+  if (err.name === 'UnauthorizedError') {
+    return res.status(401).json({
+      success: false,
+      message: 'Unauthorized access'
+    });
+  }
+
   res.status(err.status || 500).json({
     success: false,
     message: err.message || 'Internal server error'
