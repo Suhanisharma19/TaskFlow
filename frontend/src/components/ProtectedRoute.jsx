@@ -6,8 +6,8 @@ const ProtectedRoute = ({ children, adminOnly = false }) => {
 
   if (loading) {
     return (
-      <div className="min-h-screen gradient-bg flex items-center justify-center">
-        <div className="animate-spin rounded-full h-16 w-16 border-t-2 border-b-2 border-primary"></div>
+      <div className="h-screen flex items-center justify-center">
+        <div className="w-10 h-10 border-4 border-purple-500 border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
@@ -17,7 +17,7 @@ const ProtectedRoute = ({ children, adminOnly = false }) => {
   }
 
   if (adminOnly && !isAdmin()) {
-    return <Navigate to="/dashboard" replace />;
+    return <Navigate to="/tasks" replace />;
   }
 
   return children;

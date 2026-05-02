@@ -15,102 +15,89 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // Check if user is authenticated on mount
+  // Bootstrap auth
   useEffect(() => {
-    const bootstrapAuth = async () => {
-      // Clear legacy token from earlier auth approach.
-      localStorage.removeItem('token');
-
-      const storedUser = localStorage.getItem('user');
-      if (storedUser && storedUser !== 'undefined') {
-        try {
-          setUser(JSON.parse(storedUser));
-        } catch (error) {
-          console.error('Failed to parse stored user:', error);
-          localStorage.removeItem('user');
-        }
-      }
-
-      const isPublicAuthPage = ['/login', '/signup'].includes(window.location.pathname);
-      if (isPublicAuthPage && !storedUser) {
-        setLoading(false);
-        return;
-      }
-
+    const initAuth = async () => {
       try {
-        const response = await api.get('/auth/me');
-        const authenticatedUser = response.data?.user;
-        if (authenticatedUser) {
-          setUser(authenticatedUser);
-          localStorage.setItem('user', JSON.stringify(authenticatedUser));
+        const res = await api.get('/auth/me');
+        if (res.data?.user) {
+          setUser(res.data.user);
         }
-      } catch (error) {
-        localStorage.removeItem('user');
+      } catch (err) {
         setUser(null);
       } finally {
         setLoading(false);
       }
     };
 
-    bootstrapAuth();
+    initAuth();
   }, []);
 
-  // Login function
+  // LOGIN
   const login = async (email, password) => {
     try {
-      const response = await api.post('/auth/login', { email, password });
-      const { user } = response.data;
-      
-      // Keep user profile client-side; auth token is stored in httpOnly cookie by backend
-      localStorage.setItem('user', JSON.stringify(user));
-      setUser(user);
-      
-      return { success: true, user };
-    } catch (error) {
-      const message = error.response?.data?.message || 'Login failed';
-      return { success: false, message };
+      const res = await api.post('/auth/login', { email, password });
+
+      const userData = res.data?.user;
+
+      if (!userData) {
+        return { success: false, message: 'Invalid response from server' };
+      }
+
+      setUser(userData);
+
+      return { success: true, user: userData };
+    } catch (err) {
+      return {
+        success: false,
+        message: err.response?.data?.message || 'Login failed'
+      };
     }
   };
 
-  // Signup function
-  const signup = async (userData) => {
+  // SIGNUP
+  const signup = async (data) => {
     try {
-      const response = await api.post('/auth/signup', userData);
-      const { user } = response.data;
-      
-      // Keep user profile client-side; auth token is stored in httpOnly cookie by backend
-      localStorage.setItem('user', JSON.stringify(user));
-      setUser(user);
-      
-      return { success: true };
-    } catch (error) {
-      const errors = error.response?.data?.errors || [];
-      const message = error.response?.data?.message || errors?.[0]?.msg || 'Signup failed';
-      return { success: false, message, errors };
+      const res = await api.post('/auth/signup', data);
+
+      const userData = res.data?.user;
+      setUser(userData);
+
+      return { success: true, user: userData };
+    } catch (err) {
+      return {
+        success: false,
+        message: err.response?.data?.message || 'Signup failed'
+      };
     }
   };
 
-  // Logout function
-  const logout = () => {
-    api.post('/auth/logout').catch(() => {});
-    localStorage.removeItem('user');
-    setUser(null);
+  // LOGOUT
+  const logout = async () => {
+    try {
+      await api.post('/auth/logout');
+    } catch (err) {
+      // ignore
+    } finally {
+      setUser(null);
+    }
   };
 
-  // Check if user is admin
-  const isAdmin = () => {
-    return user?.role === 'admin';
-  };
+  const isAdmin = () => user?.role === 'admin';
 
-  const value = {
-    user,
-    loading,
-    login,
-    signup,
-    logout,
-    isAdmin,
-    isAuthenticated: !!user
-  };
-
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+  return (
+    <AuthContext.Provider
+      value={{
+        user,
+        loading,
+        login,
+        signup,
+        logout,
+        isAdmin,
+        isAuthenticated: !!user
+      }}
+    >
+      {children}
+    </AuthContext.Provider>
+  );
 };
