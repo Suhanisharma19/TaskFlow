@@ -2,6 +2,18 @@
 @tailwind components;
 @tailwind utilities;
 
+@layer base {
+  html {
+    @apply min-h-full antialiased;
+  }
+  body {
+    @apply min-h-screen bg-background text-text-primary;
+  }
+  #root {
+    @apply min-h-screen;
+  }
+}
+
 /* Custom scrollbar */
 ::-webkit-scrollbar {
   width: 8px;
