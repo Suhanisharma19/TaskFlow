@@ -29,9 +29,12 @@ export const AuthProvider = ({ children }) => {
     const initAuth = async () => {
       const path = (location.pathname || '/').replace(/\/$/, '') || '/';
       const onPublicAuth = path === '/login' || path === '/signup';
-      // Avoid a noisy 401 on login/signup when there is no JWT yet. Cookie-only
-      // sessions are re-checked when the user navigates to any other route.
-      if (onPublicAuth && !getStoredAuthToken()) {
+      const atRoot = path === '/';
+      const hasBearer = Boolean(getStoredAuthToken());
+      // No client JWT: skip /auth/me on login/signup/root so DevTools does not show
+      // a spurious 401 before redirect to login. httpOnly cookie sessions are still
+      // validated when opening any other route (e.g. /dashboard).
+      if ((onPublicAuth || atRoot) && !hasBearer) {
         if (generation !== bootstrapGeneration.current) return;
         setUser(null);
         setLoading(false);
