@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect, useRef } from 'react';
-import api, { AUTH_TOKEN_KEY, clearStoredAuthToken } from '../services/api';
+import api, { clearStoredAuthToken, setStoredAuthToken } from '../services/api';
 
 const AuthContext = createContext(null);
 
@@ -54,13 +54,7 @@ export const AuthProvider = ({ children }) => {
 
       const userData = res.data?.user;
       const token = res.data?.token;
-      if (token) {
-        try {
-          sessionStorage.setItem(AUTH_TOKEN_KEY, token);
-        } catch {
-          /* ignore */
-        }
-      }
+      if (token) setStoredAuthToken(token);
 
       if (!userData) {
         return { success: false, message: 'Invalid response from server' };
@@ -87,13 +81,7 @@ export const AuthProvider = ({ children }) => {
 
       const userData = res.data?.user;
       const token = res.data?.token;
-      if (token) {
-        try {
-          sessionStorage.setItem(AUTH_TOKEN_KEY, token);
-        } catch {
-          /* ignore */
-        }
-      }
+      if (token) setStoredAuthToken(token);
       if (userData) {
         setUser(userData);
       }

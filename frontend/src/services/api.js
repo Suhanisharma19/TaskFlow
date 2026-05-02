@@ -3,8 +3,31 @@ import axios from 'axios';
 /** Session JWT for cross-origin API (Railway) when third-party cookies are blocked. */
 export const AUTH_TOKEN_KEY = 'taskflow_jwt';
 
+export const getStoredAuthToken = () => {
+  try {
+    return (
+      localStorage.getItem(AUTH_TOKEN_KEY) ||
+      sessionStorage.getItem(AUTH_TOKEN_KEY) ||
+      null
+    );
+  } catch {
+    return null;
+  }
+};
+
+export const setStoredAuthToken = (token) => {
+  if (!token) return;
+  try {
+    localStorage.setItem(AUTH_TOKEN_KEY, token);
+    sessionStorage.setItem(AUTH_TOKEN_KEY, token);
+  } catch {
+    /* ignore */
+  }
+};
+
 export const clearStoredAuthToken = () => {
   try {
+    localStorage.removeItem(AUTH_TOKEN_KEY);
     sessionStorage.removeItem(AUTH_TOKEN_KEY);
   } catch {
     /* ignore */
@@ -49,7 +72,7 @@ const api = axios.create({
 api.interceptors.request.use(
   (config) => {
     try {
-      const token = sessionStorage.getItem(AUTH_TOKEN_KEY);
+      const token = getStoredAuthToken();
       if (token) {
         config.headers.Authorization = `Bearer ${token}`;
       } else {

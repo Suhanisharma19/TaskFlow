@@ -8,26 +8,35 @@ const User = require('../models/User');
 const protect = async (req, res, next) => {
   let token;
 
-  // Check for token in Authorization header
-  if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
+  const authHeader = req.headers.authorization;
+  const bearerMatch =
+    typeof authHeader === 'string' && authHeader.match(/^Bearer\s+(\S+)/i);
+
+  if (bearerMatch) {
     try {
-      // Extract token: "Bearer <token>"
-      token = req.headers.authorization.split(' ')[1];
+      token = bearerMatch[1].trim();
+      if (!token) {
+        token = null;
+      } else {
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        const userId = decoded.userId || decoded.id;
+        if (!userId) {
+          return res.status(401).json({
+            success: false,
+            message: 'Not authorized, invalid token'
+          });
+        }
+        req.user = await User.findById(userId).select('-password');
 
-      // Verify token
-      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        if (!req.user) {
+          return res.status(401).json({
+            success: false,
+            message: 'User not found'
+          });
+        }
 
-      // Get user from token (exclude password)
-      req.user = await User.findById(decoded.userId).select('-password');
-
-      if (!req.user) {
-        return res.status(401).json({
-          success: false,
-          message: 'User not found'
-        });
+        return next();
       }
-
-      return next();
     } catch (error) {
       token = null;
     }
@@ -37,7 +46,14 @@ const protect = async (req, res, next) => {
     token = req.cookies.token;
     try {
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
-      req.user = await User.findById(decoded.userId).select('-password');
+      const userId = decoded.userId || decoded.id;
+      if (!userId) {
+        return res.status(401).json({
+          success: false,
+          message: 'Not authorized, invalid token'
+        });
+      }
+      req.user = await User.findById(userId).select('-password');
 
       if (!req.user) {
         return res.status(401).json({
