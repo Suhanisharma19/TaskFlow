@@ -1,5 +1,10 @@
 import { createContext, useContext, useState, useEffect, useRef } from 'react';
-import api, { clearStoredAuthToken, setStoredAuthToken } from '../services/api';
+import { useLocation } from 'react-router-dom';
+import api, {
+  clearStoredAuthToken,
+  setStoredAuthToken,
+  getStoredAuthToken
+} from '../services/api';
 
 const AuthContext = createContext(null);
 
@@ -12,6 +17,7 @@ export const useAuth = () => {
 };
 
 export const AuthProvider = ({ children }) => {
+  const location = useLocation();
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const bootstrapGeneration = useRef(0);
@@ -21,6 +27,17 @@ export const AuthProvider = ({ children }) => {
     const generation = ++bootstrapGeneration.current;
 
     const initAuth = async () => {
+      const path = (location.pathname || '/').replace(/\/$/, '') || '/';
+      const onPublicAuth = path === '/login' || path === '/signup';
+      // Avoid a noisy 401 on login/signup when there is no JWT yet. Cookie-only
+      // sessions are re-checked when the user navigates to any other route.
+      if (onPublicAuth && !getStoredAuthToken()) {
+        if (generation !== bootstrapGeneration.current) return;
+        setUser(null);
+        setLoading(false);
+        return;
+      }
+
       try {
         const res = await api.get('/auth/me');
         if (generation !== bootstrapGeneration.current) return;
@@ -44,7 +61,7 @@ export const AuthProvider = ({ children }) => {
     return () => {
       bootstrapGeneration.current += 1;
     };
-  }, []);
+  }, [location.pathname]);
 
   // LOGIN
   const login = async (email, password) => {
